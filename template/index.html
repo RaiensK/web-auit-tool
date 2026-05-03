@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta description="This is my tool to find mistakes in html">
+    <meta author="Aivars">
+    <title>Web Audit Tool - Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Web Audit Tool</h1>
+            <p>Comprehensive website analysis for broken links, HTML health, and SEO optimization</p>
+        </div>
+
+        <div class="url-section">
+            <h2 style="color: #2d3748; margin-bottom: 0.5rem;">Start New Audit</h2>
+            <p style="color: #718096; margin-bottom: 1rem;">Enter your website URL to begin comprehensive analysis</p>
+            <div class="url-input-group">
+                <input type="url" id="urlInput" class="url-input" placeholder="https://example.com" value="https://example.com">
+                <button class="scan-btn" id="scanBtn" onclick="startScan()">
+                    <i class="fas fa-play"></i>
+                    Start Scan
+                </button>
+            </div>
+            <div id="errorMsg" class="error-msg" style="display:none;"></div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-link"></i></div>
+                <div class="stat-info">
+                    <h3>Links Checked</h3>
+                    <p id="stat-links">0</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info">
+                    <h3>Issues Found</h3>
+                    <p id="stat-issues">0</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info">
+                    <h3>Passed Checks</h3>
+                    <p id="stat-passed">0</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-info">
+                    <h3>Scan Time</h3>
+                    <p id="stat-time">0s</p>
+                </div>
+            </div>
+        </div>
+
+            
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-link"></i></div>
+                <h3>Broken Link Detective</h3>
+                <p>Scans pages for dead links and redirect issues</p>
+                <ul class="check-list">
+                    <li><i class="fas fa-check"></i> 404, 403, 500 errors</li>
+                    <li><i class="fas fa-check"></i> Empty href attributes</li>
+                    <li><i class="fas fa-check"></i> Malformed mailto/tel links</li>
+                    <li><i class="fas fa-check"></i> Timeout detection</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-code"></i></div>
+                <h3>HTML Health Check</h3>
+                <p>Validates HTML structure and accessibility</p>
+                <ul class="check-list">
+                    <li><i class="fas fa-check"></i> Unclosed tags detection</li>
+                    <li><i class="fas fa-check"></i> Missing alt attributes</li>
+                    <li><i class="fas fa-check"></i> Empty button/link text</li>
+                    <li><i class="fas fa-check"></i> Empty title tags</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                <h3>SEO Quick Scan</h3>
+                <p>Essential SEO checks for better rankings</p>
+                <ul class="check-list">
+                    <li><i class="fas fa-check"></i> Missing title/meta description</li>
+                    <li><i class="fas fa-check"></i> H1 tag presence</li>
+                    <li><i class="fas fa-check"></i> Duplicate meta descriptions</li>
+                    <li><i class="fas fa-check"></i> Missing canonical tags</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" style="display:none;">
+            <div class="results-group" id="linkResults"></div>
+            <div class="results-group" id="htmlResults"></div>
+            <div class="results-group" id="seoResults"></div>
+        </div>
+    </div>
+
+    <a href="#">Google</a>
+
+    <script>
+        async function startScan() {
+            // input field reference button reference and error message reference
+            const url = document.getElementById('urlInput').value.trim();
+            const btn = document.getElementById('scanBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            // simle validation for url
+            if (!url) return;
+            // turn of  button turn on loading text
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+            errorMsg.style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+
+            try {
+                // Send scan request to backend
+                const res = await fetch('/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                // Parse response data
+                const data = await res.json();
+                // Handle errors from backend
+                if (data.error) {
+                    errorMsg.textContent = data.error;
+                    errorMsg.style.display = 'block';
+                    return;
+                }
+                
+                document.getElementById('stat-links').textContent = data.links_checked;
+                document.getElementById('stat-issues').textContent = data.issues_found;
+                document.getElementById('stat-passed').textContent = data.passed_checks;
+                document.getElementById('stat-time').textContent = data.scan_time + 's';
+
+                renderResults('linkResults', '🔗 Broken Link Issues', data.link_issues);
+                renderResults('htmlResults', '🧱 HTML Health Issues', data.html_issues);
+                renderResults('seoResults', '📈 SEO Issues', data.seo_issues);
+
+                document.getElementById('resultsSection').style.display = 'block';
+            } catch (e) {
+                errorMsg.textContent = 'Scan failed. Please try again.';
+                errorMsg.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-play"></i> Start Scan';
+            }
+        }
+
+        function renderResults(containerId, title, issues) {
+            const el = document.getElementById(containerId);
+            if (!issues || issues.length === 0) {
+                el.innerHTML = `<div class="results-card results-ok">
+                    <h3>${title}</h3>
+                    <p class="no-issues"><i class="fas fa-check-circle"></i> No issues found</p>
+                </div>`;
+                return;
+            }
+            const rows = issues.map(i => `
+                <tr>
+                    <td><span class="issue-badge">${i.type}</span></td>
+                    <td class="issue-value">${i.value}</td>
+                    <td>${i.detail}</td>
+                </tr>`).join('');
+            el.innerHTML = `<div class="results-card">
+                <h3>${title} <span class="issue-count">${issues.length}</span></h3>
+                <table class="results-table">
+                    <thead><tr><th>Type</th><th>Value</th><th>Detail</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+        }
+    </script>
+</body>
+<footer>
+    <p style="text-align: center; color: #718096; margin-top: 2rem;">© 2024 Web Audit Tool. All rights reserved.</p>
+    </footer>
+</html>
